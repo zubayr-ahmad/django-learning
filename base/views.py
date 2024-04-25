@@ -7,6 +7,7 @@ from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
+from django.contrib.auth.forms import UserCreationForm  
 
 # Create your views here.
 
@@ -17,10 +18,11 @@ from django.http import HttpResponse
 # ]
 
 def loginPage(request):
+    page = 'login'
     if request.user.is_authenticated:
         return redirect("home")
     if request.method == "POST":
-        username = request.POST.get("username")
+        username = request.POST.get("username").lower()
         password = request.POST.get("password")
 
         try:
@@ -35,13 +37,27 @@ def loginPage(request):
             return redirect("home")
         else:
             messages.error(request, "Username OR Password is not correct.")
-    context = {}
+    context = {'page':page}
     return render(request, "base/login_register.html", context)
-
 
 def logoutUser(request):
     logout(request)
     return redirect("home")
+
+def registerPage(request):
+    form = UserCreationForm()
+    if request.method =="POST":
+        form = UserCreationForm(request.POST)
+        if form.is_valid():
+            user = form.save(commit=False)      # this will create the object of the model based on form data (and returns) but does not save it to database yet
+            user.username = user.username.lower()
+            user.save()
+            login(request, user)    # logging in the newly created user as well
+            return redirect("home")
+        else:
+            messages.error(request, "An error occurred during registration")
+    return render(request, 'base/login_register.html', {'form':form})
+
 def home(request):
     q = request.GET.get('q') if request.GET.get('q') != None else ''
     rooms = Room.objects.filter(
